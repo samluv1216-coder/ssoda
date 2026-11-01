@@ -255,6 +255,7 @@
 
   /* ---------- 시작 ---------- */
   $('btnPromptCopy').addEventListener('click', copyPrompt);
+  $('linkToHwp').addEventListener('click', (e) => { e.preventDefault(); SSODA.goTab('tohwp'); });
   document.querySelectorAll('[data-ai]').forEach(a => a.addEventListener('click', async (e) => {
     // 복사 먼저, 그다음 새 창 열기
     e.preventDefault();

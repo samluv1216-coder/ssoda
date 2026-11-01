@@ -108,7 +108,7 @@
     const warns = $('warns'), stats = $('stats');
     warns.innerHTML = ''; stats.textContent = '';
     const ready = f && f.status === 'done';
-    $('btnCopy').disabled = $('btnDownload').disabled = $('btnToPrompt').disabled = !ready;
+    $('btnCopy').disabled = $('btnDownload').disabled = $('btnToPrompt').disabled = $('btnToHwp').disabled = !ready;
 
     if (!f || f.status === 'wait' || f.status === 'run') {
       $('preview').innerHTML = '<div class="empty">변환하는 중이에요…</div>';
@@ -150,6 +150,14 @@
 
   $('btnCopy').addEventListener('click', async () => {
     toast(await SSODA.copy(currentMd()) ? '마크다운을 복사했어요' : '복사하지 못했어요. 원문 탭에서 직접 복사해 주세요');
+  });
+
+  // 변환 결과를 한글 탭으로 넘기기
+  $('btnToHwp').addEventListener('click', () => {
+    const f = files[current];
+    if (!f || f.status !== 'done') return;
+    SSODA_HWP.load(currentMd(), f.name);
+    SSODA.goTab('tohwp');
   });
 
   // 변환 결과를 프롬프트 탭의 참고 자료로 넘기기

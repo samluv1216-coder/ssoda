@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>쏘다(SSODA) — AI에게 딱 맞게, 쏘다</title>
-  <link rel="stylesheet" href="css/styles.css?v=2">
+  <link rel="stylesheet" href="css/styles.css?v=3">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏹%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -24,6 +24,7 @@
   <div class="tab-nav-inner">
     <button class="tab-btn active" data-tab="prompt">🎯 프롬프트 만들기</button>
     <button class="tab-btn" data-tab="convert">📄 PDF → 마크다운</button>
+    <button class="tab-btn" data-tab="tohwp">📝 AI 답 → 한글</button>
   </div>
 </nav>
 
@@ -45,6 +46,7 @@
         <button class="btn btn-primary" id="btnPromptCopy">📋 복사하기</button>
         <button class="btn" id="btnPromptReset">↺ 입력 지우기</button>
       </div>
+      <p class="out-tip">💡 AI 답을 받으면 <a href="#" id="linkToHwp">📝 AI 답 → 한글</a> 탭에 붙여 넣어 바로 한글 파일로 저장하세요.</p>
       <div class="ai-links">
         <span>복사하고 바로 열기</span>
         <a data-ai href="https://gemini.google.com/app" target="_blank" rel="noopener" class="btn btn-sm">🔷 재미나이</a>
@@ -85,6 +87,7 @@
           </div>
           <div class="actions">
             <button class="btn btn-primary" id="btnToPrompt">🎯 이 자료로 프롬프트 만들기</button>
+            <button class="btn" id="btnToHwp">📝 한글로</button>
             <button class="btn" id="btnCopy">📋 복사</button>
             <button class="btn" id="btnDownload">⬇️ .md 저장</button>
             <button class="btn" id="btnDownloadAll" hidden>⬇️ 모두 저장</button>
@@ -104,14 +107,66 @@
   </p>
 </main>
 
+<!-- ====== 탭 3: AI 답 → 한글 ====== -->
+<main class="tab-page wrap" data-tab="tohwp">
+  <div class="hwp-intro">
+    <b>AI에게 받은 답(마크다운)</b>을 붙여 넣으면 <b>한글 문서(.hwpx)</b>로 바로 저장하거나, 서식을 살린 채 한글에 붙여 넣을 수 있어요.
+    <span class="hwp-tip">💡 AI에게 "결과는 마크다운으로 써 줘"라고 하거나, 답 아래의 <b>복사 버튼</b>을 누르면 마크다운으로 복사돼요.</span>
+  </div>
+  <div class="hwp-grid">
+    <section class="card hwp-pane">
+      <div class="out-h">
+        <span class="out-t">① AI 답 붙여 넣기</span>
+        <span class="out-len" id="hwpLen"></span>
+      </div>
+      <textarea id="hwpIn" class="out-ta hwp-in" spellcheck="false" placeholder="# 제목&#10;&#10;AI가 준 답을 여기에 붙여 넣으세요.&#10;&#10;- 목록, **굵게**, 표 모두 한글 서식으로 바뀌어요."></textarea>
+      <div class="out-actions">
+        <button class="btn" id="btnHwpPaste">📥 클립보드에서 붙여넣기</button>
+        <button class="btn" id="btnHwpSample">예시 넣기</button>
+        <button class="btn" id="btnHwpClear">지우기</button>
+      </div>
+    </section>
+
+    <section class="card hwp-pane">
+      <div class="out-h"><span class="out-t">② 한글 문서 미리보기</span></div>
+      <div class="hwp-opts">
+        <label>본문 글꼴
+          <select id="hwpFont" class="in in-sm">
+            <option value="batang">함초롬바탕</option>
+            <option value="dotum">함초롬돋움</option>
+          </select>
+        </label>
+        <label>글자 크기
+          <select id="hwpSize" class="in in-sm">
+            <option value="1000">10pt</option>
+            <option value="1100" selected>11pt</option>
+            <option value="1200">12pt</option>
+          </select>
+        </label>
+        <label class="chk"><input type="checkbox" id="hwpCenter" checked> 첫 제목 가운데</label>
+      </div>
+      <div class="hwp-paper"><article id="hwpPreview" class="md hwp-doc"></article></div>
+      <div class="hwp-save">
+        <input id="hwpName" class="in" placeholder="파일 이름 (비우면 첫 제목으로)">
+        <button class="btn btn-primary" id="btnHwpSave">⬇️ 한글(.hwpx) 저장</button>
+        <button class="btn" id="btnHwpCopy">📋 한글에 붙여넣기용 복사</button>
+      </div>
+      <p class="hwp-note">한컴오피스 한글 2014 이상에서 열려요. 그림·수식은 빠지고, 셀 합치기 같은 복잡한 표는 단순한 표로 만들어져요.</p>
+    </section>
+  </div>
+</main>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/app.js?v=2"></script>
 <script src="js/templates.js?v=2"></script>
-<script src="js/prompt.js?v=2"></script>
+<script src="js/prompt.js?v=3"></script>
 <script src="js/pdf2md.js?v=2"></script>
-<script src="js/convert.js?v=2"></script>
+<script src="js/convert.js?v=3"></script>
+<script src="js/hwpx.js?v=3"></script>
+<script src="js/tohwp.js?v=3"></script>
 </body>
 </html>
