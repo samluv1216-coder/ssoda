@@ -149,7 +149,10 @@
   const fmt = (v) => Array.isArray(v) ? v.join(', ') : (v || '').trim();
 
   function build(splitSource = false) {
-    const t = tpl(), v = vals(), c = state.ctx;
+    const v = vals(), c = state.ctx;
+    // 양식에 adapt 가 있으면 고른 값에 따라 역할·요청·규칙·결과 형식을 바꾼다
+    const base = tpl();
+    const t = base.adapt ? { ...base, ...base.adapt(v, c) } : base;
     const missing = [];
     const L = [];
     L.push('# 역할', t.role, '');
