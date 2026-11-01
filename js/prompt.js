@@ -130,7 +130,7 @@
     const s = state.source;
     const count = el('span', { class: 'src-count' });
     const ta = el('textarea', { class: 'in src-ta', rows: 6,
-      placeholder: '여기에 자료를 붙여 넣거나, PDF 변환 탭에서 보내 주세요.',
+      placeholder: '여기에 자료를 붙여 넣거나, 문서 → 마크다운 탭에서 보내 주세요.',
       oninput: (e) => { s.text = e.target.value; if (!s.text) s.name = ''; showCount(); update(); } }, s.text);
     const showCount = () => {
       count.textContent = s.text ? `${s.name ? s.name + ' · ' : ''}${s.text.length.toLocaleString()}자` : '';
@@ -141,14 +141,14 @@
       el('label', { class: 'lbl' }, '📎 참고 자료', t.source === 'required' ? el('span', { class: 'req' }, ' *') : ' (선택)', count),
       ta,
       el('div', { class: 'src-actions' },
-        el('button', { class: 'btn btn-sm', type: 'button', onclick: () => SSODA.goTab('convert') }, '📄 PDF에서 가져오기'),
+        el('button', { class: 'btn btn-sm', type: 'button', onclick: () => SSODA.goTab('convert') }, '📄 문서에서 가져오기'),
         el('button', { class: 'btn btn-sm', type: 'button', onclick: () => { s.text = ''; s.name = ''; ta.value = ''; showCount(); update(); } }, '비우기'))));
   }
 
   /* ---------- 프롬프트 조립 ---------- */
   const fmt = (v) => Array.isArray(v) ? v.join(', ') : (v || '').trim();
 
-  function build() {
+  function build(splitSource = false) {
     const t = tpl(), v = vals(), c = state.ctx;
     const missing = [];
     const L = [];
@@ -174,7 +174,9 @@
     if (t.output) L.push('# 결과 형식', t.output, '');
 
     const src = state.source.text.trim();
-    if (t.source && src) {
+    if (t.source && src && splitSource) {
+      L.push('# 참고 자료', '앞에서 여러 번에 나눠 보낸 자료 전체를 바탕으로 작성해 주세요.' + (state.source.name ? ` (출처: ${state.source.name})` : ''));
+    } else if (t.source && src) {
       L.push('# 참고 자료', '아래 """ 사이의 자료를 바탕으로 작성해 주세요.' + (state.source.name ? ` (출처: ${state.source.name})` : ''), '"""', src, '"""');
     } else if (t.source === 'required') {
       missing.push('참고 자료');
@@ -196,6 +198,10 @@
   /* ---------- 결과 갱신 ---------- */
   function update() {
     const { text, missing } = build();
+    const long = text.length > SPLIT_HINT;
+    $('splitHint').textContent = long ? `프롬프트가 ${text.length.toLocaleString()}자로 길어요. 한 번에 안 들어가면 나눠 보내세요.` : '';
+    $('splitBox').classList.toggle('long', long);
+    if ($('splitBox').open) renderSplit();
     $('promptOut').value = text;
     $('promptLen').textContent = `${text.length.toLocaleString()}자`;
 
@@ -206,6 +212,93 @@
     if (pii.length) notes.append(el('div', { class: 'note err' }, `⚠️ 개인정보로 보이는 내용이 있어요: ${pii.join(', ')}. 지우거나 바꾼 뒤 사용하세요.`));
     if (state.source.text.length > SOURCE_LIMIT && tpl().source) {
       notes.append(el('div', { class: 'note warn' }, '📏 참고 자료가 매우 길어요. AI 채팅창에 다 들어가지 않을 수 있으니 필요한 부분만 남기세요.'));
+    }
+  }
+
+  /* ---------- 나눠 보내기 ---------- */
+  const SPLIT_HINT = 12000;
+  // 문단 → 줄 → 글자 순으로, size 이하 조각으로 자른다
+  function chunk(text, size) {
+    const parts = [];
+    let cur = '';
+    const push = () => { if (cur.trim()) parts.push(cur.trim()); cur = ''; };
+    // 제목 줄은 바로 다음 문단과 붙여서, 조각 끝에 제목만 남지 않게
+    const paras = [];
+    for (const para of text.split(/\n{2,}/)) {
+      const prev = paras[paras.length - 1];
+      if (prev !== undefined && /^#{1,6}\s/.test(prev) && !prev.includes('\n')) paras[paras.length - 1] = prev + '\n\n' + para;
+      else paras.push(para);
+    }
+    for (const para of paras) {
+      const piece = para + '\n\n';
+      if (cur.length + piece.length <= size) { cur += piece; continue; }
+      push();
+      if (piece.length <= size) { cur = piece; continue; }
+      for (const line of para.split('\n')) {
+        if (cur.length + line.length + 1 > size) push();
+        if (line.length > size) { for (let i = 0; i < line.length; i += size) parts.push(line.slice(i, i + size)); continue; }
+        cur += line + '\n';
+      }
+      push();
+    }
+    push();
+    return parts;
+  }
+
+  function splitMessages(size) {
+    const src = state.source.text.trim();
+    const hasSrc = !!(tpl().source && src);
+    const { text: request, missing } = build(hasSrc);
+    const body = hasSrc ? src : request;
+    const pieces = chunk(body, size);
+    const n = pieces.length;
+    const msgs = pieces.map((c, i) => {
+      const head = i === 0
+        ? `지금부터 ${hasSrc ? '자료' : '요청'}를 ${n}번에 나눠 보낼게요. 모두 받을 때까지는 내용을 정리하거나 답하지 말고 "받았어요 (번호/${n})"라고만 답해 주세요.\n\n`
+        : '';
+      return `${head}[${i + 1}/${n}]\n${c}\n\n[${i + 1}/${n} 끝] "받았어요 (${i + 1}/${n})"라고만 답해 주세요.`;
+    });
+    msgs.push(hasSrc
+      ? `이제 자료를 모두(${n}개) 보냈어요. 아래 요청대로 작성해 주세요.\n\n${request}`
+      : `이제 요청을 모두(${n}개) 보냈어요. [1/${n}]부터 [${n}/${n}]까지를 이어서 하나의 요청으로 보고 작성해 주세요.`);
+    return { msgs, missing };
+  }
+
+  function renderSplit() {
+    const box = $('splitParts');
+    const { msgs, missing } = splitMessages(Number($('splitSize').value));
+    box.innerHTML = '';
+    if (missing.length) { box.append(el('div', { class: 'note' }, `✍️ 먼저 채워 주세요: ${missing.join(', ')}`)); return; }
+    msgs.forEach((m, i) => {
+      const last = i === msgs.length - 1;
+      const b = el('button', { type: 'button', class: 'split-btn' + (last ? ' last' : ''),
+        onclick: async () => {
+          const ok = await SSODA.copy(m);
+          if (ok) b.classList.add('done');
+          SSODA.toast(ok ? `${i + 1}번째를 복사했어요. AI 채팅창에 붙여 넣으세요` : '복사하지 못했어요');
+        } },
+        el('span', { class: 'split-n' }, last ? '✅ 마지막: 요청' : `${i + 1} / ${msgs.length - 1}`),
+        el('span', { class: 'split-len' }, `${m.length.toLocaleString()}자`));
+      box.append(b);
+    });
+  }
+
+  /* ---------- 후속 요청 ---------- */
+  const FOLLOW_UPS = [
+    ['더 쉽게', '방금 결과를 학생이 이해하기 쉬운 말로 다시 써 주세요. 어려운 낱말은 풀어서 써 주세요.'],
+    ['표로 정리', '방금 결과의 핵심을 마크다운 표로 정리해 주세요.'],
+    ['절반으로 줄이기', '방금 결과를 핵심만 남겨 분량을 절반 정도로 줄여 주세요.'],
+    ['더 자세히', '방금 결과를 예시와 설명을 더해 더 자세히 써 주세요.'],
+    ['사실 점검', '방금 결과에서 사실과 다르거나 확인이 필요한 내용이 있는지 점검하고, 고친 부분을 표시해 주세요.'],
+    ['다른 버전 2개', '같은 조건으로 느낌이 다른 버전을 2개 더 만들어 주세요.'],
+    ['말투 바꾸기', '방금 결과를 학부모에게 보내는 정중한 말투로 바꿔 주세요.'],
+    ['마크다운으로', '방금 결과를 다른 설명 없이 마크다운 형식으로만 다시 주세요. (제목은 #, 목록은 -, 표는 마크다운 표)'],
+  ];
+  function renderFollowUps() {
+    const box = $('followChips');
+    for (const [label, text] of FOLLOW_UPS) {
+      box.append(el('button', { type: 'button', class: 'chip', title: text,
+        onclick: async () => SSODA.toast(await SSODA.copy(text) ? `"${label}" 요청을 복사했어요` : '복사하지 못했어요') }, label));
     }
   }
 
@@ -268,6 +361,9 @@
     renderForm(); update();
   });
 
+  $('splitBox').addEventListener('toggle', () => { if ($('splitBox').open) renderSplit(); });
+  $('splitSize').addEventListener('change', renderSplit);
+  renderFollowUps();
   renderList(); renderForm(); update();
   window.SSODA_PROMPT = { attachSource };
 })();

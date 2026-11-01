@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>쏘다(SSODA) — AI에게 딱 맞게, 쏘다</title>
-  <link rel="stylesheet" href="css/styles.css?v=4">
+  <link rel="stylesheet" href="css/styles.css?v=7">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏹%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -26,7 +26,8 @@
 <nav class="tab-nav">
   <div class="tab-nav-inner">
     <button class="tab-btn active" data-tab="prompt">🎯 프롬프트 만들기</button>
-    <button class="tab-btn" data-tab="convert">📄 PDF → 마크다운</button>
+    <button class="tab-btn" data-tab="convert">📄 문서 → 마크다운</button>
+    <button class="tab-btn" data-tab="privacy">🔒 개인정보 가리기</button>
     <button class="tab-btn" data-tab="tohwp">📝 AI 답 → 한글</button>
   </div>
 </nav>
@@ -49,6 +50,23 @@
         <button class="btn btn-primary" id="btnPromptCopy">📋 복사하기</button>
         <button class="btn" id="btnPromptReset">↺ 입력 지우기</button>
       </div>
+      <details class="split" id="splitBox">
+        <summary>✂️ 나눠서 보내기 <span class="split-hint" id="splitHint"></span></summary>
+        <div class="split-opts">
+          한 번에
+          <select id="splitSize" class="in in-sm">
+            <option value="6000">6,000자</option>
+            <option value="12000" selected>12,000자</option>
+            <option value="25000">25,000자</option>
+          </select>
+          씩 나눠요. 순서대로 눌러 복사 → 붙여넣기 하세요.
+        </div>
+        <div id="splitParts" class="split-parts"></div>
+      </details>
+      <div class="follow">
+        <div class="follow-t">↪ 답을 받은 뒤 이어서 보내기 <span>(누르면 복사)</span></div>
+        <div class="chips" id="followChips"></div>
+      </div>
       <p class="out-tip">💡 AI 답을 받으면 <a href="#" id="linkToHwp">📝 AI 답 → 한글</a> 탭에 붙여 넣어 바로 한글 파일로 저장하세요.</p>
       <div class="ai-links">
         <span>복사하고 바로 열기</span>
@@ -60,14 +78,14 @@
   </div>
 </main>
 
-<!-- ====== 탭 2: PDF → 마크다운 ====== -->
+<!-- ====== 탭 2: 문서 → 마크다운 ====== -->
 <main class="tab-page wrap" data-tab="convert">
   <section class="card">
-    <div class="card-h"><span class="num">1</span> PDF 올리기</div>
+    <div class="card-h"><span class="num">1</span> 문서 올리기 <span class="fmt-tags">PDF · 한글 HWPX · 워드 DOCX · 파워포인트 PPTX</span></div>
     <label class="drop" id="drop">
-      <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+      <input type="file" id="fileInput" accept=".pdf,.hwpx,.docx,.pptx,.hwp" multiple hidden>
       <div class="drop-ic">⬆️</div>
-      <div class="drop-t">PDF 파일을 여기로 끌어다 놓거나 <b>눌러서 선택</b>하세요</div>
+      <div class="drop-t">문서 파일을 여기로 끌어다 놓거나 <b>눌러서 선택</b>하세요</div>
       <div class="drop-s">여러 개도 한 번에 됩니다 · 🔒 파일은 서버로 보내지 않고 이 브라우저 안에서만 변환돼요</div>
     </label>
     <div class="opts">
@@ -105,9 +123,65 @@
   </section>
 
   <p class="foot">
-    글자를 선택할 수 있는 PDF에 잘 맞아요. 스캔본, 복잡한 표, 한글(HWP)에서 만든 일부 PDF는 결과가 거칠 수 있어요.
+    PDF는 글자를 선택할 수 있는 파일에 잘 맞아요. 스캔본·복잡한 표는 거칠 수 있어요. 예전 형식 HWP는 한글에서 HWPX로 저장한 뒤 올려 주세요. 그림은 빠져요.
     원문 탭에서 바로 고친 뒤 저장할 수 있어요.
   </p>
+</main>
+
+<!-- ====== 탭: 개인정보 가리기 ====== -->
+<main class="tab-page wrap" data-tab="privacy">
+  <div class="hwp-intro">
+    상담 메모·관찰 기록처럼 <b>학생 정보가 담긴 글</b>을 AI에 보내기 전에 이름·연락처를 <b>가명</b>(학생A, [전화1] …)으로 바꾸고,
+    AI 답을 받으면 <b>다시 원래 이름으로</b> 되돌려 줘요.
+    <span class="hwp-tip">🔒 원문과 대응표는 이 브라우저에만 저장되고 어디로도 전송되지 않아요. 공용 PC에서는 다 쓴 뒤 <b>대응표 지우기</b>를 눌러 주세요.</span>
+  </div>
+
+  <div class="hwp-grid">
+    <section class="card hwp-pane">
+      <div class="out-h"><span class="out-t">① 원문 붙여 넣기</span></div>
+      <textarea id="pvIn" class="in pv-ta" spellcheck="false" placeholder="예) 김민수 학생은 3학년 2반 15번으로, 모둠 활동에서 이서연과 자주 다툼. 민수가 먼저 사과함. 어머니 연락처 010-1234-5678"></textarea>
+      <div class="field" style="margin-top:12px">
+        <label class="lbl">가릴 이름 목록 <span class="pv-hint">(한 줄에 한 명, 학급 명렬표를 그대로 붙여 넣어도 돼요)</span></label>
+        <textarea id="pvNames" class="in" rows="3" placeholder="김민수&#10;이서연"></textarea>
+        <div id="pvSuggest" class="chips pv-suggest" hidden></div>
+      </div>
+      <div class="pv-opts">
+        <label><input type="checkbox" id="pvGiven" checked> 이름만 부른 경우도 (민수야 → 학생A)</label>
+        <label><input type="checkbox" id="pv_rrn" checked> 주민번호</label>
+        <label><input type="checkbox" id="pv_phone" checked> 휴대전화</label>
+        <label><input type="checkbox" id="pv_tel" checked> 일반전화</label>
+        <label><input type="checkbox" id="pv_email" checked> 이메일</label>
+        <label><input type="checkbox" id="pv_sno" checked> 학년·반·번호</label>
+        <label>가명 앞말 <input id="pvPrefix" class="in in-sm pv-prefix" value="학생"></label>
+      </div>
+    </section>
+
+    <section class="card hwp-pane">
+      <div class="out-h"><span class="out-t">② 가린 글 (AI에 보낼 글)</span><span class="out-len" id="pvSummary"></span></div>
+      <textarea id="pvOut" class="out-ta pv-ta" readonly spellcheck="false" placeholder="왼쪽에 원문을 넣으면 가린 글이 여기에 나와요."></textarea>
+      <div class="out-actions">
+        <button class="btn btn-primary" id="btnPvCopy">📋 가린 글 복사</button>
+        <button class="btn" id="btnPvToPrompt">🎯 이 글로 프롬프트 만들기</button>
+      </div>
+      <details class="pv-map">
+        <summary>대응표 보기 (가명 ↔ 원래 정보)</summary>
+        <table><thead><tr><th>가명</th><th>원래</th><th></th></tr></thead><tbody id="pvMap"></tbody></table>
+        <button class="btn btn-sm" id="btnPvReset">🗑️ 대응표 지우기</button>
+      </details>
+    </section>
+  </div>
+
+  <section class="card pv-restore">
+    <div class="out-h"><span class="out-t">③ AI 답 되돌리기</span><span class="out-len" id="pvRestoreInfo"></span></div>
+    <div class="hwp-grid">
+      <textarea id="pvAi" class="in pv-ta2" spellcheck="false" placeholder="AI가 준 답을 붙여 넣으세요. 학생A·[전화1] 같은 가명이 원래 이름으로 바뀌어요."></textarea>
+      <textarea id="pvRestored" class="out-ta pv-ta2" readonly spellcheck="false" placeholder="원래 이름으로 되돌린 글"></textarea>
+    </div>
+    <div class="out-actions">
+      <button class="btn btn-primary" id="btnPvRestoreCopy">📋 되돌린 글 복사</button>
+      <button class="btn" id="btnPvToHwp">📝 한글로</button>
+    </div>
+  </section>
 </main>
 
 <!-- ====== 탭 3: AI 답 → 한글 ====== -->
@@ -170,10 +244,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/app.js?v=2"></script>
 <script src="js/templates.js?v=2"></script>
-<script src="js/prompt.js?v=3"></script>
+<script src="js/prompt.js?v=4"></script>
 <script src="js/pdf2md.js?v=2"></script>
-<script src="js/convert.js?v=3"></script>
+<script src="js/office2md.js?v=5"></script>
+<script src="js/convert.js?v=5"></script>
 <script src="js/hwpx.js?v=3"></script>
 <script src="js/tohwp.js?v=3"></script>
+<script src="js/privacy.js?v=4"></script>
 </body>
 </html>

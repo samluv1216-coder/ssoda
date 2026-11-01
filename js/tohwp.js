@@ -141,5 +141,5 @@
   render();
 
   // 다른 탭에서 마크다운 넘겨받기 (PDF 변환 결과 등)
-  window.SSODA_HWP = { load(md, name) { $('hwpIn').value = md; if (name) $('hwpName').value = name.replace(/\.pdf$/i, ''); render(); } };
+  window.SSODA_HWP = { load(md, name) { $('hwpIn').value = md; if (name) $('hwpName').value = name.replace(/\.(pdf|hwpx|docx|pptx)$/i, ''); render(); } };
 })();

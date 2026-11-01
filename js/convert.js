@@ -13,8 +13,10 @@
 
   const toast = (msg) => SSODA.toast(msg);
 
+  const unitText = (r) => r.pages ? `${r.pages}${r.unit ?? '쪽'} · ` : '';
+
   function mdName(f) {
-    return f.name.replace(/\.pdf$/i, '') + '.md';
+    return f.name.replace(/\.(pdf|hwpx|docx|pptx)$/i, '') + '.md';
   }
 
   /* ---------- 파일 받기 ---------- */
@@ -25,8 +27,12 @@
   drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
 
   async function addFiles(list) {
-    const pdfs = [...list].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
-    if (!pdfs.length) { toast('PDF 파일만 올릴 수 있어요'); return; }
+    const all = [...list];
+    if (all.some(f => /\.hwp$/i.test(f.name))) {
+      toast('HWP는 바로 열 수 없어요. 한글에서 [다른 이름으로 저장 → HWPX]로 저장한 뒤 올려 주세요');
+    }
+    const pdfs = all.filter(f => /\.(pdf|hwpx|docx|pptx)$/i.test(f.name) || f.type === 'application/pdf');
+    if (!pdfs.length) { if (!all.some(f => /\.hwp$/i.test(f.name))) toast('PDF·HWPX·DOCX·PPTX 파일만 올릴 수 있어요'); return; }
     $('resultCard').classList.remove('hidden');
     const start = files.length;
     for (const f of pdfs) files.push({ file: f, name: f.name, status: 'wait', progress: 0 });
@@ -50,17 +56,19 @@
     render();
     try {
       const buf = await f.file.arrayBuffer();
-      f.result = await PDF2MD.convert(buf, options(), (n, total) => {
-        f.progress = n / total; f.total = total;
-        renderFiles();
-      });
+      const ext = (f.name.match(/\.(\w+)$/) || [])[1]?.toLowerCase();
+      f.result = ext === 'pdf' || !ext
+        ? await PDF2MD.convert(buf, options(), (n, total) => { f.progress = n / total; f.total = total; renderFiles(); })
+        : await OFFICE2MD.convert(buf, ext);
       f.status = 'done';
     } catch (e) {
       console.error(e);
       f.status = 'error';
       f.error = /password/i.test(e && e.name + e.message)
-        ? '암호가 걸린 PDF는 열 수 없어요.'
-        : 'PDF를 읽지 못했어요. 파일이 손상됐거나 PDF가 아닐 수 있어요.';
+        ? '암호가 걸린 파일은 열 수 없어요.'
+        : e && e.message === 'zip'
+          ? '파일을 열지 못했어요. 암호가 걸렸거나 손상된 파일일 수 있어요.'
+          : '파일을 읽지 못했어요. 손상됐거나 지원하지 않는 형식일 수 있어요.';
     }
     render();
   }
@@ -83,7 +91,7 @@
       else {
         const w = f.result.warnings;
         cls = w.some(x => x.level === 'error') ? 'err' : w.length ? 'warn' : 'ok';
-        s = `${f.result.pages}쪽 · ` + (cls === 'ok' ? '완료' : '확인 필요');
+        s = unitText(f.result) + (cls === 'ok' ? '완료' : '확인 필요');
       }
       b.innerHTML = `<div class="file-n"></div><div class="file-s ${cls}"></div>` +
         (f.status === 'run' ? `<div class="bar"><i style="width:${f.progress * 100}%"></i></div>` : '');
@@ -125,7 +133,7 @@
         warns.appendChild(d);
       }
       const md = currentMd();
-      stats.textContent = `${f.result.pages}쪽 · ${md.length.toLocaleString()}자` +
+      stats.textContent = `${unitText(f.result)}${md.length.toLocaleString()}자` +
         (f.result.removedLines ? ` · 머리글/바닥글 ${f.result.removedLines}줄 지움` : '') +
         (f.edited != null ? ' · 직접 고침' : '');
       $('preview').innerHTML = marked.parse(md);
