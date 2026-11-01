@@ -47,6 +47,9 @@
     pv.style.fontSize = (Number($('hwpSize').value) / 100) + 'pt';
     pv.classList.toggle('center-title', $('hwpCenter').checked);
     $('hwpLen').textContent = md.trim() ? `${md.length.toLocaleString()}자` : '';
+    const nt = md.trim() ? SSODA_SHEET.countTables(md) : 0;
+    $('btnXlsxSave').disabled = !nt;
+    $('btnXlsxSave').textContent = nt ? `📊 표 ${nt}개 엑셀로 저장` : '📊 표를 엑셀로 저장';
     try { localStorage.setItem(DRAFT_KEY, md); } catch (e) { /* 무시 */ }
   }
 
@@ -76,6 +79,25 @@
     } catch (e) {
       console.error(e);
       SSODA.toast('한글 파일을 만들지 못했어요');
+    }
+  }
+
+  /* ---------- 표 → 엑셀 ---------- */
+  async function saveXlsx() {
+    const md = $('hwpIn').value;
+    try {
+      const r = await SSODA_SHEET.tablesToXlsx(md);
+      if (!r) { SSODA.toast('답 안에 표가 없어요'); return; }
+      const blob = new Blob([r.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName().replace(/\.hwpx$/, '.xlsx');
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      SSODA.toast(`📊 표 ${r.count}개를 엑셀로 저장했어요`);
+    } catch (e) {
+      console.error(e);
+      SSODA.toast(e && e.message === 'sheet-lib' ? '엑셀 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.' : '엑셀 파일을 만들지 못했어요');
     }
   }
 
@@ -132,6 +154,7 @@
   ['hwpFont', 'hwpSize', 'hwpCenter'].forEach(id => $(id).addEventListener('change', render));
   $('btnHwpSave').addEventListener('click', saveHwpx);
   $('btnHwpCopy').addEventListener('click', copyRich);
+  $('btnXlsxSave').addEventListener('click', saveXlsx);
   $('btnHwpSample').addEventListener('click', () => { $('hwpIn').value = SAMPLE; render(); });
   $('btnHwpClear').addEventListener('click', () => { $('hwpIn').value = ''; $('hwpName').value = ''; render(); });
   $('btnHwpPaste').addEventListener('click', async () => {
@@ -141,5 +164,5 @@
   render();
 
   // 다른 탭에서 마크다운 넘겨받기 (PDF 변환 결과 등)
-  window.SSODA_HWP = { load(md, name) { $('hwpIn').value = md; if (name) $('hwpName').value = name.replace(/\.(pdf|hwpx|docx|pptx)$/i, ''); render(); } };
+  window.SSODA_HWP = { load(md, name) { $('hwpIn').value = md; if (name) $('hwpName').value = name.replace(/\.\w+$/, ''); render(); } };
 })();

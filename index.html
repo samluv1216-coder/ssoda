@@ -28,7 +28,7 @@
     <button class="tab-btn active" data-tab="prompt">🎯 프롬프트 만들기</button>
     <button class="tab-btn" data-tab="convert">📄 문서 → 마크다운</button>
     <button class="tab-btn" data-tab="privacy">🔒 개인정보 가리기</button>
-    <button class="tab-btn" data-tab="tohwp">📝 AI 답 → 한글</button>
+    <button class="tab-btn" data-tab="tohwp">📝 AI 답 → 한글·엑셀</button>
   </div>
 </nav>
 
@@ -67,7 +67,7 @@
         <div class="follow-t">↪ 답을 받은 뒤 이어서 보내기 <span>(누르면 복사)</span></div>
         <div class="chips" id="followChips"></div>
       </div>
-      <p class="out-tip">💡 AI 답을 받으면 <a href="#" id="linkToHwp">📝 AI 답 → 한글</a> 탭에 붙여 넣어 바로 한글 파일로 저장하세요.</p>
+      <p class="out-tip">💡 AI 답을 받으면 <a href="#" id="linkToHwp">📝 AI 답 → 한글·엑셀</a> 탭에 붙여 넣어 한글·엑셀 파일로 저장하세요.</p>
       <div class="ai-links">
         <span>복사하고 바로 열기</span>
         <a data-ai href="https://gemini.google.com/app" target="_blank" rel="noopener" class="btn btn-sm">🔷 재미나이</a>
@@ -81,9 +81,9 @@
 <!-- ====== 탭 2: 문서 → 마크다운 ====== -->
 <main class="tab-page wrap" data-tab="convert">
   <section class="card">
-    <div class="card-h"><span class="num">1</span> 문서 올리기 <span class="fmt-tags">PDF · 한글 HWPX · 워드 DOCX · 파워포인트 PPTX · 사진(글자 인식)</span></div>
+    <div class="card-h"><span class="num">1</span> 문서 올리기 <span class="fmt-tags">PDF · 한글 HWPX · 워드 DOCX · 파워포인트 PPTX · 엑셀·CSV · 사진(글자 인식)</span></div>
     <label class="drop" id="drop">
-      <input type="file" id="fileInput" accept=".pdf,.hwpx,.docx,.pptx,.hwp,.png,.jpg,.jpeg,.webp,.bmp,.gif" multiple hidden>
+      <input type="file" id="fileInput" accept=".pdf,.hwpx,.docx,.pptx,.hwp,.xlsx,.xls,.csv,.tsv,.png,.jpg,.jpeg,.webp,.bmp,.gif" multiple hidden>
       <div class="drop-ic">⬆️</div>
       <div class="drop-t">문서 파일을 여기로 끌어다 놓거나 <b>눌러서 선택</b>하세요</div>
       <div class="drop-s">여러 개도 한 번에 됩니다 · 🔒 파일은 서버로 보내지 않고 이 브라우저 안에서만 변환돼요</div>
@@ -187,7 +187,7 @@
 <!-- ====== 탭 3: AI 답 → 한글 ====== -->
 <main class="tab-page wrap" data-tab="tohwp">
   <div class="hwp-intro">
-    <b>AI에게 받은 답(마크다운)</b>을 붙여 넣으면 <b>한글 문서(.hwpx)</b>로 바로 저장하거나, 서식을 살린 채 한글에 붙여 넣을 수 있어요.
+    <b>AI에게 받은 답(마크다운)</b>을 붙여 넣으면 <b>한글 문서(.hwpx)</b>로 바로 저장하거나, 서식을 살린 채 한글에 붙여 넣을 수 있어요. 답 속의 <b>표는 엑셀(.xlsx)</b>로도 저장돼요.
     <span class="hwp-tip">💡 AI에게 "결과는 마크다운으로 써 줘"라고 하거나, 답 아래의 <b>복사 버튼</b>을 누르면 마크다운으로 복사돼요.</span>
   </div>
   <div class="hwp-grid">
@@ -227,6 +227,7 @@
         <input id="hwpName" class="in" placeholder="파일 이름 (비우면 첫 제목으로)">
         <button class="btn btn-primary" id="btnHwpSave">⬇️ 한글(.hwpx) 저장</button>
         <button class="btn" id="btnHwpCopy">📋 한글에 붙여넣기용 복사</button>
+        <button class="btn" id="btnXlsxSave" disabled>📊 표를 엑셀로 저장</button>
       </div>
       <p class="hwp-note">한컴오피스 한글 2014 이상에서 열려요. 그림·수식은 빠지고, 셀 합치기 같은 복잡한 표는 단순한 표로 만들어져요.</p>
     </section>
@@ -244,13 +245,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/app.js?v=2"></script>
 <script src="js/templates.js?v=2"></script>
-<script src="js/prompt.js?v=4"></script>
+<script src="js/prompt.js?v=8"></script>
 <script src="js/pdf2md.js?v=7"></script>
 <script src="js/office2md.js?v=5"></script>
 <script src="js/ocr.js?v=7"></script>
-<script src="js/convert.js?v=7"></script>
+<script src="js/sheet.js?v=8"></script>
+<script src="js/convert.js?v=8"></script>
 <script src="js/hwpx.js?v=3"></script>
-<script src="js/tohwp.js?v=3"></script>
+<script src="js/tohwp.js?v=8"></script>
 <script src="js/privacy.js?v=4"></script>
 </body>
 </html>

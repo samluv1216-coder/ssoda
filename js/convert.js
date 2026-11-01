@@ -16,7 +16,7 @@
   const unitText = (r) => r.pages ? `${r.pages}${r.unit ?? '쪽'} · ` : '';
 
   function mdName(f) {
-    return f.name.replace(/\.(pdf|hwpx|docx|pptx)$/i, '') + '.md';
+    return f.name.replace(/\.\w+$/, '') + '.md';
   }
 
   /* ---------- 파일 받기 ---------- */
@@ -31,8 +31,8 @@
     if (all.some(f => /\.hwp$/i.test(f.name))) {
       toast('HWP는 바로 열 수 없어요. 한글에서 [다른 이름으로 저장 → HWPX]로 저장한 뒤 올려 주세요');
     }
-    const pdfs = all.filter(f => /\.(pdf|hwpx|docx|pptx)$/i.test(f.name) || f.type === 'application/pdf' || IMG_RE.test(f.name));
-    if (!pdfs.length) { if (!all.some(f => /\.hwp$/i.test(f.name))) toast('PDF·HWPX·DOCX·PPTX·사진 파일만 올릴 수 있어요'); return; }
+    const pdfs = all.filter(f => /\.(pdf|hwpx|docx|pptx)$/i.test(f.name) || f.type === 'application/pdf' || IMG_RE.test(f.name) || SHEET_RE.test(f.name));
+    if (!pdfs.length) { if (!all.some(f => /\.hwp$/i.test(f.name))) toast('PDF·HWPX·DOCX·PPTX·엑셀·CSV·사진 파일만 올릴 수 있어요'); return; }
     $('resultCard').classList.remove('hidden');
     const start = files.length;
     for (const f of pdfs) files.push({ file: f, name: f.name, status: 'wait', progress: 0 });
@@ -42,6 +42,7 @@
   }
 
   const IMG_RE = /\.(png|jpe?g|webp|bmp|gif)$/i;
+  const SHEET_RE = /\.(xlsx|xls|csv|tsv)$/i;
 
   function options() {
     return {
@@ -64,6 +65,8 @@
         const r = await SSODA_OCR.recognize(f.file, (msg) => { f.msg = msg; renderFiles(); });
         f.result = { markdown: (r.text || '') + '\n', pages: null, unit: '', removedLines: 0, warnings: ocrWarnings(r.confidence, 0) };
         if (!r.text) f.result.warnings = [{ level: 'error', msg: '글자를 찾지 못했어요. 더 선명한 사진으로 다시 해 보세요.' }];
+      } else if (SHEET_RE.test(f.name)) {
+        f.result = await SSODA_SHEET.toMarkdown(buf, ext);
       } else {
         f.result = ext === 'pdf' || !ext
           ? await PDF2MD.convert(buf, options(), (n, total) => { f.progress = n / total; f.total = total; renderFiles(); })
@@ -76,6 +79,8 @@
       f.status = 'error';
       f.error = /password/i.test(e && e.name + e.message)
         ? '암호가 걸린 파일은 열 수 없어요.'
+        : e && e.message === 'sheet-lib'
+          ? '엑셀 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'
         : e && e.message === 'ocr-lib'
           ? '글자 인식 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'
         : e && e.message === 'zip'
