@@ -31,8 +31,8 @@
     if (all.some(f => /\.hwp$/i.test(f.name))) {
       toast('HWP는 바로 열 수 없어요. 한글에서 [다른 이름으로 저장 → HWPX]로 저장한 뒤 올려 주세요');
     }
-    const pdfs = all.filter(f => /\.(pdf|hwpx|docx|pptx)$/i.test(f.name) || f.type === 'application/pdf');
-    if (!pdfs.length) { if (!all.some(f => /\.hwp$/i.test(f.name))) toast('PDF·HWPX·DOCX·PPTX 파일만 올릴 수 있어요'); return; }
+    const pdfs = all.filter(f => /\.(pdf|hwpx|docx|pptx)$/i.test(f.name) || f.type === 'application/pdf' || IMG_RE.test(f.name));
+    if (!pdfs.length) { if (!all.some(f => /\.hwp$/i.test(f.name))) toast('PDF·HWPX·DOCX·PPTX·사진 파일만 올릴 수 있어요'); return; }
     $('resultCard').classList.remove('hidden');
     const start = files.length;
     for (const f of pdfs) files.push({ file: f, name: f.name, status: 'wait', progress: 0 });
@@ -40,6 +40,8 @@
     render();
     for (let i = start; i < files.length; i++) await run(i);
   }
+
+  const IMG_RE = /\.(png|jpe?g|webp|bmp|gif)$/i;
 
   function options() {
     return {
@@ -57,19 +59,67 @@
     try {
       const buf = await f.file.arrayBuffer();
       const ext = (f.name.match(/\.(\w+)$/) || [])[1]?.toLowerCase();
-      f.result = ext === 'pdf' || !ext
-        ? await PDF2MD.convert(buf, options(), (n, total) => { f.progress = n / total; f.total = total; renderFiles(); })
-        : await OFFICE2MD.convert(buf, ext);
+      if (IMG_RE.test(f.name)) {
+        // 사진·스캔 이미지는 바로 글자 인식
+        const r = await SSODA_OCR.recognize(f.file, (msg) => { f.msg = msg; renderFiles(); });
+        f.result = { markdown: (r.text || '') + '\n', pages: null, unit: '', removedLines: 0, warnings: ocrWarnings(r.confidence, 0) };
+        if (!r.text) f.result.warnings = [{ level: 'error', msg: '글자를 찾지 못했어요. 더 선명한 사진으로 다시 해 보세요.' }];
+      } else {
+        f.result = ext === 'pdf' || !ext
+          ? await PDF2MD.convert(buf, options(), (n, total) => { f.progress = n / total; f.total = total; renderFiles(); })
+          : await OFFICE2MD.convert(buf, ext);
+      }
+      f.ocrDone = false;
       f.status = 'done';
     } catch (e) {
       console.error(e);
       f.status = 'error';
       f.error = /password/i.test(e && e.name + e.message)
         ? '암호가 걸린 파일은 열 수 없어요.'
+        : e && e.message === 'ocr-lib'
+          ? '글자 인식 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'
         : e && e.message === 'zip'
           ? '파일을 열지 못했어요. 암호가 걸렸거나 손상된 파일일 수 있어요.'
           : '파일을 읽지 못했어요. 손상됐거나 지원하지 않는 형식일 수 있어요.';
     }
+    f.msg = '';
+    render();
+  }
+
+  /* ---------- 스캔 PDF 쪽 글자 인식 ---------- */
+  function ocrWarnings(conf, n) {
+    const base = `${n ? n + '쪽을 ' : ''}글자 인식(OCR)으로 읽었어요. 인식 정확도 약 ${conf}%.`;
+    return [{ level: conf < 70 ? 'error' : 'warn', msg: base + (conf < 70 ? ' 틀린 글자가 많을 수 있으니 원본과 꼭 비교해 주세요.' : ' 숫자·이름은 원본과 한 번 확인해 주세요.') }];
+  }
+
+  async function runOcr(i) {
+    const f = files[i];
+    const pages = f.result.emptyPages || [];
+    if (!pages.length) return;
+    f.status = 'run'; f.msg = '글자 인식 준비 중…'; f.total = 0;
+    render();
+    try {
+      const buf = await f.file.arrayBuffer();
+      const res = await SSODA_OCR.pdfPages(buf, pages, (msg) => { f.msg = msg; renderFiles(); });
+      const marks = f.result.pageMarks;
+      const textOf = (r) => (marks ? `<!-- ${r.page}쪽 -->\n\n` : '') + (r.text || `<!-- ${r.page}쪽: 글자를 찾지 못함 -->`);
+      const allScanned = pages.length === f.result.pages;
+      let md = f.result.markdown.replace(/\n?<!-- 텍스트가 없는 페이지:[^>]*-->\n?/, '\n').trim();
+      md = allScanned
+        ? res.map(textOf).join('\n\n')
+        : md + '\n\n---\n\n## 스캔 쪽 (글자 인식)\n\n' + res.map(r => `### ${r.page}쪽\n\n${r.text || '(글자를 찾지 못함)'}`).join('\n\n');
+      const conf = Math.round(res.reduce((a, r) => a + r.confidence, 0) / res.length);
+      f.result = { ...f.result, markdown: md.trim() + '\n', emptyPages: [],
+        warnings: [...f.result.warnings.filter(w => !/스캔|글자를 찾지/.test(w.msg)), ...ocrWarnings(conf, res.length)] };
+      f.ocrDone = true;
+      f.edited = null;
+      f.status = 'done';
+    } catch (e) {
+      console.error(e);
+      f.status = 'done';
+      toast(e && e.message === 'ocr-lib' ? '글자 인식 프로그램을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.' : '글자 인식 중 오류가 났어요');
+    }
+    f.msg = '';
     render();
   }
 
@@ -86,7 +136,7 @@
       b.className = 'file' + (i === current ? ' active' : '');
       let s = '', cls = '';
       if (f.status === 'wait') s = '대기 중';
-      else if (f.status === 'run') s = f.total ? `변환 중… ${Math.round(f.progress * f.total)}/${f.total}쪽` : '여는 중…';
+      else if (f.status === 'run') s = f.msg || (f.total ? `변환 중… ${Math.round(f.progress * f.total)}/${f.total}쪽` : '여는 중…');
       else if (f.status === 'error') { s = '실패'; cls = 'err'; }
       else {
         const w = f.result.warnings;
@@ -94,7 +144,7 @@
         s = unitText(f.result) + (cls === 'ok' ? '완료' : '확인 필요');
       }
       b.innerHTML = `<div class="file-n"></div><div class="file-s ${cls}"></div>` +
-        (f.status === 'run' ? `<div class="bar"><i style="width:${f.progress * 100}%"></i></div>` : '');
+        (f.status === 'run' && !f.msg ? `<div class="bar"><i style="width:${f.progress * 100}%"></i></div>` : '');
       b.querySelector('.file-n').textContent = f.name;
       b.querySelector('.file-s').textContent = s;
       b.title = f.name;
@@ -119,7 +169,10 @@
     $('btnCopy').disabled = $('btnDownload').disabled = $('btnToPrompt').disabled = $('btnToHwp').disabled = !ready;
 
     if (!f || f.status === 'wait' || f.status === 'run') {
-      $('preview').innerHTML = '<div class="empty">변환하는 중이에요…</div>';
+      $('preview').innerHTML = '';
+      const d = document.createElement('div'); d.className = 'empty';
+      d.textContent = (f && f.msg) || '변환하는 중이에요…';
+      $('preview').appendChild(d);
       $('source').value = '';
     } else if (f.status === 'error') {
       $('preview').innerHTML = '';
@@ -131,6 +184,18 @@
         const d = document.createElement('div');
         d.className = 'w ' + w.level; d.textContent = (w.level === 'error' ? '⚠️ ' : '💡 ') + w.msg;
         warns.appendChild(d);
+      }
+      // 스캔 쪽이 있으면 글자 인식 버튼
+      const scan = f.result.emptyPages || [];
+      if (scan.length) {
+        const box = document.createElement('div');
+        box.className = 'w ocr';
+        const b = document.createElement('button');
+        b.className = 'btn btn-primary btn-sm';
+        b.textContent = `🔍 스캔 쪽 글자 읽기 (${scan.length}쪽)`;
+        b.onclick = () => runOcr(current);
+        box.append(b, document.createTextNode(' 처음 한 번은 한국어 인식 데이터(약 10MB)를 받아요. 한 쪽에 5~15초쯤 걸려요.'));
+        warns.appendChild(box);
       }
       const md = currentMd();
       stats.textContent = `${unitText(f.result)}${md.length.toLocaleString()}자` +

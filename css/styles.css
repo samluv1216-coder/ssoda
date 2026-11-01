@@ -352,3 +352,4 @@ textarea.pv-ta2 { min-height: 26vh; resize: vertical; width: 100%; font: 13px/1.
 .follow-t span { font-weight: 400; color: var(--muted); font-size: 12px; }
 .follow .chip { font-size: 12px; padding: 4px 10px; }
 .fmt-tags { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 6px; }
+.w.ocr { background: var(--brand-soft); color: var(--text-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

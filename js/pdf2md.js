@@ -459,9 +459,9 @@
 
     const warnings = [];
     if (emptyPages.length === doc.numPages) {
-      warnings.push({ level: 'error', msg: '글자를 찾지 못했어요. 스캔한 이미지 PDF로 보여요. 문자 인식(OCR)이나 AI 변환이 필요해요.' });
+      warnings.push({ level: 'error', msg: '글자가 없는 스캔(이미지) PDF예요. 아래 「스캔 쪽 글자 읽기」를 눌러 주세요.' });
     } else if (emptyPages.length) {
-      warnings.push({ level: 'warn', msg: `${emptyPages.join(', ')}쪽은 글자가 없어요 (스캔 이미지일 수 있음).` });
+      warnings.push({ level: 'warn', msg: `${emptyPages.join(', ')}쪽은 글자가 없어요(스캔 이미지). 아래 버튼으로 읽을 수 있어요.` });
     }
     const g = garbleScore(md);
     if (g.bad > 0.03) {
@@ -473,7 +473,7 @@
     const meta = await doc.getMetadata().catch(() => null);
     const title = meta && meta.info && meta.info.Title ? String(meta.info.Title).trim() : '';
     await doc.destroy();
-    return { markdown: md, pages: pages.length, removedLines: removed, warnings, title };
+    return { markdown: md, pages: pages.length, removedLines: removed, warnings, title, emptyPages, pageMarks: opts.pageMarks };
   }
 
   window.PDF2MD = { convert };
