@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>쏘다(SSODA) — AI에게 딱 맞게, 쏘다</title>
+  <link rel="stylesheet" href="css/styles.css?v=2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏹%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="logo">🏹</div>
+    <div>
+      <div class="brand-t">쏘다 <span class="brand-en">(SSODA)</span></div>
+      <div class="brand-slogan">AI에게 딱 맞게 다듬어, 쏘다 — 프롬프트 만들기 · 문서 변환</div>
+    </div>
+  </div>
+  <div class="credit">© 2026 Created by Eunsoon</div>
+</header>
+
+<nav class="tab-nav">
+  <div class="tab-nav-inner">
+    <button class="tab-btn active" data-tab="prompt">🎯 프롬프트 만들기</button>
+    <button class="tab-btn" data-tab="convert">📄 PDF → 마크다운</button>
+  </div>
+</nav>
+
+<!-- ====== 탭 1: 프롬프트 만들기 ====== -->
+<main class="tab-page active wrap" data-tab="prompt">
+  <div class="pg">
+    <aside class="card tpl-list" id="tplList"></aside>
+
+    <section class="card tpl-form" id="tplForm"></section>
+
+    <section class="card out">
+      <div class="out-h">
+        <span class="out-t">✨ 완성된 프롬프트</span>
+        <span class="out-len" id="promptLen"></span>
+      </div>
+      <div id="promptNotes" class="notes"></div>
+      <textarea id="promptOut" class="out-ta" readonly spellcheck="false"></textarea>
+      <div class="out-actions">
+        <button class="btn btn-primary" id="btnPromptCopy">📋 복사하기</button>
+        <button class="btn" id="btnPromptReset">↺ 입력 지우기</button>
+      </div>
+      <div class="ai-links">
+        <span>복사하고 바로 열기</span>
+        <a data-ai href="https://gemini.google.com/app" target="_blank" rel="noopener" class="btn btn-sm">🔷 재미나이</a>
+        <a data-ai href="https://chatgpt.com/" target="_blank" rel="noopener" class="btn btn-sm">🟢 챗GPT</a>
+        <a data-ai href="https://claude.ai/new" target="_blank" rel="noopener" class="btn btn-sm">🟠 Claude</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ====== 탭 2: PDF → 마크다운 ====== -->
+<main class="tab-page wrap" data-tab="convert">
+  <section class="card">
+    <div class="card-h"><span class="num">1</span> PDF 올리기</div>
+    <label class="drop" id="drop">
+      <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+      <div class="drop-ic">⬆️</div>
+      <div class="drop-t">PDF 파일을 여기로 끌어다 놓거나 <b>눌러서 선택</b>하세요</div>
+      <div class="drop-s">여러 개도 한 번에 됩니다 · 🔒 파일은 서버로 보내지 않고 이 브라우저 안에서만 변환돼요</div>
+    </label>
+    <div class="opts">
+      <label><input type="checkbox" id="optHeaders" checked> 머리글·바닥글·쪽번호 지우기</label>
+      <label><input type="checkbox" id="optTables" checked> 표 찾기</label>
+      <label><input type="checkbox" id="optBold" checked> 굵은 글씨 살리기</label>
+      <label><input type="checkbox" id="optPages"> 쪽 번호 표시 넣기</label>
+    </div>
+  </section>
+
+  <section class="card result hidden" id="resultCard">
+    <div class="card-h"><span class="num">2</span> 변환 결과</div>
+    <div class="result-body">
+      <aside class="files" id="fileList"></aside>
+      <div class="viewer">
+        <div class="viewer-bar">
+          <div class="tabs">
+            <button class="tab active" data-view="preview">미리보기</button>
+            <button class="tab" data-view="source">마크다운 원문</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="btnToPrompt">🎯 이 자료로 프롬프트 만들기</button>
+            <button class="btn" id="btnCopy">📋 복사</button>
+            <button class="btn" id="btnDownload">⬇️ .md 저장</button>
+            <button class="btn" id="btnDownloadAll" hidden>⬇️ 모두 저장</button>
+          </div>
+        </div>
+        <div class="warns" id="warns"></div>
+        <div class="stats" id="stats"></div>
+        <article class="preview md" id="preview"></article>
+        <textarea class="source hidden" id="source" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    글자를 선택할 수 있는 PDF에 잘 맞아요. 스캔본, 복잡한 표, 한글(HWP)에서 만든 일부 PDF는 결과가 거칠 수 있어요.
+    원문 탭에서 바로 고친 뒤 저장할 수 있어요.
+  </p>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="js/app.js?v=2"></script>
+<script src="js/templates.js?v=2"></script>
+<script src="js/prompt.js?v=2"></script>
+<script src="js/pdf2md.js?v=2"></script>
+<script src="js/convert.js?v=2"></script>
+</body>
+</html>
