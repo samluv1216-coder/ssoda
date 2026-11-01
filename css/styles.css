@@ -53,6 +53,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .brand-slogan { font-size: 12px; opacity: 0.85; margin-top: 2px; }
 .credit { font-size: 11px; opacity: 0.75; white-space: nowrap; }
+.credit-wrap { display: flex; align-items: center; gap: 8px; }
+.author-char { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
 
 /* ------------------- Layout ------------------- */
 .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
@@ -153,7 +155,7 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (max-width: 760px) {
   .hdr { padding: 12px 16px; }
-  .credit { display: none; }
+  .credit-wrap { display: none; }
   .result-body { grid-template-columns: 1fr; }
   .files { flex-direction: row; overflow-x: auto; }
   .file { flex: 0 0 200px; }
@@ -300,3 +302,11 @@ a.btn:hover { text-decoration: none; }
 }
 .md blockquote { margin: .8em 0; padding: 4px 12px; border-left: 3px solid #94A3B8; color: #475569; text-align: left; }
 .out-tip { font-size: 12px; color: var(--text-2); margin: 10px 0 0; }
+
+/* ------------------- 하단 제작자 표시 ------------------- */
+.site-foot {
+  text-align: center; padding: 22px 16px 30px; margin-top: 8px;
+  border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.6;
+}
+.site-foot a { color: var(--muted); text-decoration: underline; }
+.site-foot a:hover { color: var(--brand); }
